@@ -1,0 +1,77 @@
+version: "3.8"
+
+name: dataset-profiler
+
+services:
+  postgres:
+    image: postgres:16.6
+    container_name: dataset-profiler-db
+    env_file:
+      - .env
+    volumes:
+      - profiler-db:/var/lib/postgresql/data
+    networks:
+      - profiler
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  init:
+    image: postgres:16.6
+    container_name: dataset-profiler-init
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./init/001_schema.sql:/schema.sql:ro
+      - ./init/init.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+    networks:
+      - profiler
+    restart: "no"
+
+  profiler:
+    build: .
+    image: dataset-profiler:lab2
+    container_name: dataset-profiler-app
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "${APP_PORT}:8000"
+    volumes:
+      - ./data:/data:ro
+    entrypoint: ["python", "-m", "uvicorn"]
+    command: ["app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks:
+      - profiler
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+networks:
+  profiler:
+    name: dataset-profiler-net
+    driver: bridge
+
+volumes:
+  profiler-db:
+    name: dataset-profiler-db-data

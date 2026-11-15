@@ -1,0 +1,9 @@
+run_id,model,accuracy,latency_ms,train_rows
+1,logreg,0.812,14.2,10000
+2,logreg,0.834,13.8,20000
+3,random_forest,0.901,48.5,10000
+4,random_forest,0.907,51.0,20000
+5,xgboost,0.924,36.7,10000
+6,xgboost,,39.1,20000
+7,linear_svm,0.776,9.4,10000
+8,linear_svm,0.789,9.1,20000
